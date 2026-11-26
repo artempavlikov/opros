@@ -41,9 +41,9 @@
     push: {
       enabled: true,
       server: 'https://ntfy.sh',
-      topic: '',                    // имя канала ntfy; пусто = пуш выключен
+      topic: 'opros-agk1pk2z2zwycagh',   // канал ntfy; пусто = пуш выключен
       title: 'Новый результат',
-      priority: 4,                  // 1..5, 4 = высокий
+      priority: 4,                       // 1..5, 4 = высокий
       tags: ['incoming_envelope']
     },
 
