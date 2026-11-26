@@ -75,12 +75,16 @@
                  local: Promise.resolve(null) };
 
     if (CONFIG.mail.enabled && CONFIG.mail.email) {
+      // FormSubmit добавляет английскую шапку и подписи к полям.
+      // Поэтому весь русский текст кладём в одно поле «Сообщение»,
+      // а шаблон выключаем — иначе письмо приходит наполовину на английском.
       var mailBody = {
         _subject: CONFIG.mail.subjectPrefix + ' — ' +
                   new Date().toLocaleString('ru-RU'),
-        _template: 'table'
+        _template: 'basic',
+        _captcha: 'false',
+        'Сообщение': buildRussianLetter(flat)
       };
-      Object.keys(flat).forEach(function (k) { mailBody[k] = flat[k]; });
       jobs.mail = post('https://formsubmit.co/ajax/' + CONFIG.mail.email,
         mailBody, { 'Content-Type': 'application/json', 'Accept': 'application/json' });
     }
@@ -130,6 +134,28 @@
     return Object.keys(flat).map(function (k) {
       return k + ': ' + flat[k];
     }).join('\n');
+  }
+
+  /* Письмо целиком по-русски: без английских подписей FormSubmit. */
+  function buildRussianLetter(flat) {
+    var d = new Date();
+    var lines = [
+      'Результат опроса',
+      '',
+      'Когда: ' + d.toLocaleDateString('ru-RU') + ', ' +
+        d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+    ];
+    Object.keys(flat).forEach(function (k) {
+      var v = flat[k];
+      if (v === '' || v === null || v === undefined) return;
+      lines.push('');
+      lines.push(k + ':');
+      lines.push(String(v));
+    });
+    lines.push('');
+    lines.push('—');
+    lines.push('Письмо отправлено автоматически с сайта опроса.');
+    return lines.join('\n');
   }
 
   function buildPushText(flat) {
