@@ -200,6 +200,9 @@ summary:hover{color:var(--ink)}
   <p style="max-width:600px;margin:40px auto;padding:0 20px">Для опроса нужен включённый JavaScript. Включите его и обновите страницу.</p>
 </noscript>
 
+<!-- Отправка результата: почта и пуш. Настройки — внутри deliver.js -->
+<script src="deliver.js"></script>
+
 <script>
 (function(){
   'use strict';
@@ -467,47 +470,37 @@ summary:hover{color:var(--ink)}
 
   /* ---------- отправка результата ---------- */
 
-  /* Почта без настройки: FormSubmit работает прямо из браузера, без SMTP.
-     Первое письмо будет с просьбой активировать форму — нажать ссылку один раз. */
-  var MAIL_ENDPOINT = 'https://formsubmit.co/ajax/pavlov.artem2705@yandex.ru';
-
+  /* Отправка вынесена в deliver.js — один файл на все будущие сайты.
+     Настройки почты и пуша живут там, здесь только вызов. */
   function sendResult(run){
     var rows = tally(run.answers);
     var top = rows[0];
     var text = buildReport(run, rows);
 
-    // 1. прямой канал: почта через FormSubmit (работает на любом хостинге)
+    var fields = {
+      'Любимый цветок': top ? F[top.k].name + ' (' + top.v + ' из 5)' : '—',
+      'Результат': text
+    };
+
+    if(window.Deliver){
+      window.Deliver.send(fields, {
+        at: run.at,
+        answers: run.answers,
+        top: top ? F[top.k].name : '',
+        topScore: top ? top.v : 0
+      });
+      return;
+    }
+
+    // запасной путь, если deliver.js не загрузился
     try{
-      fetch(MAIL_ENDPOINT, {
+      fetch('https://formsubmit.co/ajax/pavlov.artem2705@yandex.ru', {
         method: 'POST',
         headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-        body: JSON.stringify({
-          _subject: 'Результат опроса — ' + new Date().toLocaleString('ru-RU'),
-          _template: 'table',
-          'Любимый цветок': top ? F[top.k].name + ' (' + top.v + ' из 5)' : '—',
-          'Результат': text
-        })
+        body: JSON.stringify({_subject: 'Результат опроса', _template: 'table',
+          'Любимый цветок': fields['Любимый цветок'], 'Результат': text})
       }).catch(function(){});
     }catch(e){}
-
-    // 2. локальный сервер, если страницу отдаёт он
-    if(/^https?:$/.test(location.protocol)){
-      try{
-        fetch('api/result', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({
-            text: text,
-            at: run.at,
-            answers: run.answers,
-            top: top ? F[top.k].name : '',
-            topScore: top ? top.v : 0,
-            page: location.href
-          }),
-          keepalive: true
-        }).catch(function(){});
-      }catch(e){}
-    }
   }
 
   /* ---------- подсчёт ---------- */
